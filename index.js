@@ -38,6 +38,7 @@ class CH_LB {
         this.algorithm = algorithm //md5 or any algorithm we would like
         this.load = {}
         this.totalLoad = 0
+        this.detachedInstances = []
         for (let i = 0; i < servers.length; i++) {
             this.addServer(servers[i])
         }
@@ -201,6 +202,23 @@ app.use(counterMiddleware)
 
 addresses = process.env.SERVERS.split(',');
 let chlb = new CH_LB(addresses, 1, "md5")
+setInterval(() => {
+    if (chlb.detachedInstances.length != 0) {
+        chlb.detachedInstances.forEach(function (host) {
+            ping.sys.probe(host, function (isAlive) {
+                if (isAlive) {
+                    chlb.addServer(host)
+                    const index = chlb.detachedInstances.indexOf(host);
+                    if (index !== -1) {
+                        chlb.detachedInstances.splice(index, 1);
+                    }
+                }
+            });
+        });
+    }
+    logger.info("Down servers at the moment : "+chlb.detachedInstances)
+
+}, 1000)
 
 var proxy = httpProxy.createProxyServer({ ws: true });
 var server = https.createServer(credentials, app).listen(8082)
@@ -283,6 +301,7 @@ server.on('upgrade', function (req, socket, head) {
 proxy.on('error', function (err, req, res) {
     logger.info("Error on " + req.url+" "+err)
     chlb.removeServer(address.host + ":" + address.port)
+    chlb.detachedInstances.push(address.host + ":" + address.port)
     logger.info(chlb.servers)
     res.writeHead(503, { 'Content-Type': 'text/plain' });
     res.end('Service Unavailable');

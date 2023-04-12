@@ -10,6 +10,8 @@ const credentials = { key: fs.readFileSync("localhost.key"), cert: fs.readFileSy
 const metric = require('./utils/metrics')
 const { Counter } = require('prom-client');
 const logger = require('./utils/logger');
+const ping = require('ping');
+
 
 const successfulRequests = new Counter({
     name: 'successful_requests',
@@ -202,23 +204,23 @@ app.use(counterMiddleware)
 
 addresses = process.env.SERVERS.split(',');
 let chlb = new CH_LB(addresses, 1, "md5")
-setInterval(() => {
-    if (chlb.detachedInstances.length != 0) {
-        chlb.detachedInstances.forEach(function (host) {
-            ping.sys.probe(host, function (isAlive) {
-                if (isAlive) {
-                    chlb.addServer(host)
-                    const index = chlb.detachedInstances.indexOf(host);
-                    if (index !== -1) {
-                        chlb.detachedInstances.splice(index, 1);
-                    }
-                }
-            });
-        });
-    }
-    logger.info("Down servers at the moment : "+chlb.detachedInstances)
+// setInterval(() => {
+//     if (chlb.detachedInstances.length != 0) {
+//         chlb.detachedInstances.forEach(function (host) {
+//             ping.sys.probe(host, function (isAlive) {
+//                 if (isAlive) {
+//                     chlb.addServer(host)
+//                     const index = chlb.detachedInstances.indexOf(host);
+//                     if (index !== -1) {
+//                         chlb.detachedInstances.splice(index, 1);
+//                     }
+//                 }
+//             });
+//         });
+//     }
+//     logger.info("Down servers at the moment : "+chlb.detachedInstances)
 
-}, 1000)
+// }, 1000)
 
 var proxy = httpProxy.createProxyServer({ ws: true });
 var server = https.createServer(credentials, app).listen(8082)
@@ -265,7 +267,9 @@ app.use('/agent-lb', function (req, res) {
     catch (error) {
         logger.error("Username is undefined")
     }
-    proxy.web(req, res, { target: { protocol: 'https', host: address.host, port: address.port } })
+    if(address!=undefined){
+        proxy.web(req, res, { target: { protocol: 'https', host: address.host, port: address.port } })
+    }
 
 })
 proxy.on('proxyRes', function (proxyRes, req, res) {

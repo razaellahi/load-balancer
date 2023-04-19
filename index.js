@@ -71,8 +71,8 @@ class CH_LB {
         }
         this.headRing.sort();
         this.tailRing.sort();
-        logger.info(this.headRing)
-        logger.info(this.tailRing)
+        // logger.info(this.headRing)
+        // logger.info(this.tailRing)
 
         let ip
         if (this.searchClient(request) == true) {
@@ -80,7 +80,8 @@ class CH_LB {
             let s = ip.split(":")
             this.target["host"] = s[0]
             this.target["port"] = s[1]
-            logger.info(this.target["host"]+":"+this.target["port"])            
+            logger.info(this.target["host"] + ":" + this.target["port"])
+            logger.info(request+" is mapped to "+this.target["host"]+":"+this.target["port"])
             return this.target;
         }
         else {
@@ -94,7 +95,8 @@ class CH_LB {
                         let s = ip.split(":")
                         this.target["host"] = s[0]
                         this.target["port"] = s[1]
-                        logger.info(this.target["host"]+":"+this.target["port"])
+                        logger.info(this.target["host"] + ":" + this.target["port"])
+                        logger.info(request+" is mapped to "+this.target["host"]+":"+this.target["port"])
                         return this.target;
                     }
                 }
@@ -109,7 +111,8 @@ class CH_LB {
                         let s = ip.split(":")
                         this.target["host"] = s[0]
                         this.target["port"] = s[1]
-                        logger.info(this.target["host"]+":"+this.target["port"])
+                        logger.info(this.target["host"] + ":" + this.target["port"])
+                        logger.info(request+" is mapped to "+this.target["host"]+":"+this.target["port"])
                         return this.target;
                     }
                 }
@@ -137,7 +140,7 @@ class CH_LB {
         }
         for (let i = 0; i < this.replicas; i++) {
             const key = crypto.createHash(this.algorithm).update(serverName + ":" + i).digest('hex')
-            logger.info("Detaching " + key)
+            logger.info("Detaching " + this.hashRing[key])
             delete this.hashRing[key]
             for (let j = 0; j < this.keys.length; j++) {
                 if (this.keys[j] == key) {
@@ -200,27 +203,43 @@ const counterMiddleware = (req, res, next) => {
 
 app.use(cors(corsOpts));
 app.use(counterMiddleware)
+const http = require('http');
 
 
-addresses = process.env.SERVERS.split(',');
+let addresses = process.env.SERVERS.split(',');
 let chlb = new CH_LB(addresses, 1, "md5")
-// setInterval(() => {
-//     if (chlb.detachedInstances.length != 0) {
-//         chlb.detachedInstances.forEach(function (host) {
-//             ping.sys.probe(host, function (isAlive) {
-//                 if (isAlive) {
-//                     chlb.addServer(host)
-//                     const index = chlb.detachedInstances.indexOf(host);
-//                     if (index !== -1) {
-//                         chlb.detachedInstances.splice(index, 1);
-//                     }
-//                 }
-//             });
-//         });
-//     }
-//     logger.info("Down servers at the moment : "+chlb.detachedInstances)
+setInterval(() => {
+    if (chlb.detachedInstances.length != 0) {
+        for (let i = 0; i < chlb.detachedInstances.length; i++) {
+            let host = chlb.detachedInstances[i].split(":")
+            var options = {
+                hostname: host[0],
+                port: host[1],
+                path: '/agent/pull-mode-list',
+                method: 'GET'
+            };
+            const req = http.request(options, (res) => {
+                console.log('Agent manager instance is reachable');
+                chlb.addServer(host[0]+":"+host[1])
+                let index = chlb.detachedInstances.indexOf(host[0] + ":" + host[1])
+                if (index != -1) {
+                    chlb.detachedInstances.splice(index, 1);
+                }
+            });
 
-// }, 1000)
+            req.on('error', (error) => {
+                console.error(`Failed to reach agent manager instance: ${error.message}`);
+
+            });
+
+            req.end()
+        }
+
+    }
+    logger.info("Down servers at the moment : " + chlb.detachedInstances)
+    logger.info("Up servers at the moment " + chlb.servers)
+}, 2000)
+
 
 var proxy = httpProxy.createProxyServer({ ws: true });
 var server = https.createServer(credentials, app).listen(8082)
@@ -261,19 +280,18 @@ app.use('/agent-lb', function (req, res) {
     try {
         if (req.body.username != undefined) {
             logger.info("Username " + req.body.username)
-            address = chlb.routeRequest(username)
+            address = chlb.routeRequest(req.body.username)
+            proxy.web(req, res, { target: { protocol: 'https', host: address.host, port: address.port } })
         }
     }
     catch (error) {
-        logger.error("Username is undefined")
+        logger.error(error)
     }
-    if(address!=undefined){
-        proxy.web(req, res, { target: { protocol: 'https', host: address.host, port: address.port } })
-    }
+
 
 })
 proxy.on('proxyRes', function (proxyRes, req, res) {
-    logger.info("Status code for URL " + req.url + " " + proxyRes.statusCode);
+    logger.info("Status code for URL " + req.url + " " + proxyRes.statusCode + " " + proxyRes.statusMessage);
 })
 app.use('/socket.io', function (req, res) {
     logger.info("Request Url " + req.url + " hostname: " + req.hostname)
@@ -290,7 +308,7 @@ app.use('/socket.io', function (req, res) {
             }
         }
     }
-    
+
     if (address == undefined) {
         address = chlb.routeRequest(username)
     }
@@ -303,10 +321,12 @@ server.on('upgrade', function (req, socket, head) {
     proxy.ws(req, socket, head, { target: { host: address.host, port: address.port, path: '/socket.io' } });
 });
 proxy.on('error', function (err, req, res) {
-    logger.info("Error on " + req.url+" "+err)
-    chlb.removeServer(address.host + ":" + address.port)
+    logger.info("Error on " + req.url + " " + err)
     chlb.detachedInstances.push(address.host + ":" + address.port)
-    logger.info(chlb.servers)
+    chlb.removeServer(address.host + ":" + address.port)
+    logger.info("Available servers at the moment :" + chlb.servers)
+    logger.info("Unvailable servers at the moment :" + chlb.detachedInstances)
+    console.log(addresses)
     res.writeHead(503, { 'Content-Type': 'text/plain' });
     res.end('Service Unavailable');
 })
@@ -318,5 +338,4 @@ process.on('SIGTERM', () => {
     proxy.close();
     process.exit(0)
 });
-
 metric.startMetricServer()

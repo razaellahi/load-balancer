@@ -242,7 +242,9 @@ setInterval(() => {
 
 
 var proxy = httpProxy.createProxyServer({ ws: true });
-var server = https.createServer(credentials, app).listen(8082)
+var server = https.createServer(credentials, app).listen(8082, () => {
+    logger.info("Load balancer is listening at port 8082...");
+  })
 app.use(express.json())
 app.use(express.urlencoded())
 app.use(express.text())
@@ -298,6 +300,7 @@ app.use('/socket.io', function (req, res) {
     logger.info("Request coming from " + req.connection.remoteAddress)
 
     if (req.body != null) {
+       console.log(req.body)
         var str = req.body
         var str2 = str.toString()
         if (str2.includes("agent")) {
@@ -308,9 +311,14 @@ app.use('/socket.io', function (req, res) {
             }
         }
     }
-
+    
     if (address == undefined) {
-        address = chlb.routeRequest(username)
+        if(username == undefined){
+            logger.info("Username is undefined")
+        }
+        else{
+            address = chlb.routeRequest(username)
+        }
     }
     logger.info(username+" is mapped to "+address.host+":"+address.port)
     proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })

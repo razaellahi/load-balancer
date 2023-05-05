@@ -312,17 +312,23 @@ app.use('/socket.io', function (req, res) {
         }
     }
     
-    if (address == undefined) {
-        if(username == undefined){
-            logger.info("Username is undefined")
-        }
-        else{
-            address = chlb.routeRequest(username)
-        }
-    }
-    logger.info(username+" is mapped to "+address.host+":"+address.port)
+    if (address != undefined) {
+        try{
+            if(username != undefined){
+                address = chlb.routeRequest(username)
+                logger.info(username+" is mapped to "+address.host+":"+address.port)
     proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
 
+            }
+        }
+        catch{
+            logger.info("Username is undefined")
+        }
+    }
+    else{
+        logger.info("Host is undefined")
+    }
+    
 })
 
 server.on('upgrade', function (req, socket, head) {
@@ -335,7 +341,6 @@ proxy.on('error', function (err, req, res) {
     chlb.removeServer(address.host + ":" + address.port)
     logger.info("Available servers at the moment :" + chlb.servers)
     logger.info("Unvailable servers at the moment :" + chlb.detachedInstances)
-    console.log(addresses)
     res.writeHead(503, { 'Content-Type': 'text/plain' });
     res.end('Service Unavailable');
 })

@@ -71,33 +71,24 @@ class CH_LB {
         }
         this.headRing.sort();
         this.tailRing.sort();
-        // logger.info(this.headRing)
-        // logger.info(this.tailRing)
 
         let ip
-        // if (this.searchClient(request) == true) {
-        //     ip = this.routeReq[request]
-        //     let s = ip.split(":")
-        //     this.target["host"] = s[0]
-        //     this.target["port"] = s[1]
-        //     logger.info(this.target["host"] + ":" + this.target["port"])
-        //     logger.info(request+" is mapped to "+this.target["host"]+":"+this.target["port"])
-        //     return this.target;
-        // }
-        // else {
-            let oldMapping
-            if (this.searchClient(request) == true){
-                        oldMapping = this.routeReq[request]
-            }
+        if (this.searchClient(request) == true) {
+            ip = this.routeReq[request]
+            let s = ip.split(":")
+            this.target["host"] = s[0]
+            this.target["port"] = s[1]
+            logger.info(this.target["host"] + ":" + this.target["port"])
+            logger.info(request+" is mapped to "+this.target["host"]+":"+this.target["port"])
+            return this.target;
+        }
+        else {
             if (this.tailRing.length != 0) {
                 for (let i = 0; i < this.tailRing.length; i++) {
                     ip = this.hashRing[this.tailRing[i]]
                     let loadonServr = this.load[ip]
                     
                     if (loadonServr + 1 <= this.calculateLoad()) {
-                        if(oldMapping!=ip){
-                            logger.info("Username "+request+" is relocated to "+ip)
-                        }
                         this.routeReq[request] = ip
                         this.load[ip] = this.load[ip] + 1; this.totalLoad++
                         let s = ip.split(":")
@@ -111,9 +102,6 @@ class CH_LB {
             }
             else {
                 for (let i = 0; i < this.headRing.length; i++) {
-                    if(oldMapping!=ip){
-                        logger.info("Username "+request+" is relocated to "+ip)
-                    }
                     ip = this.hashRing[this.headRing[i]]
                     let loadonServr = this.load[ip]
                     if (loadonServr + 1 <= this.calculateLoad()) {
@@ -127,7 +115,7 @@ class CH_LB {
                         return this.target;
                     }
                 }
-           // }
+            }
         }
     }
     getReplicaNum(key, Serverip) {
@@ -247,11 +235,9 @@ setInterval(() => {
         }
 
     }
-    logger.info("Down servers at the moment : " + chlb.detachedInstances)
-    logger.info("Up servers at the moment " + chlb.servers)
-    for (const [key, value] of Object.entries(chlb.load)) {
-        console.log(`${key}: ${value}`);
-      }
+    // logger.info("Down servers at the moment : " + chlb.detachedInstances)
+    // logger.info("Up servers at the moment " + chlb.servers)
+    
 }, 2000)
 
 
@@ -326,7 +312,7 @@ app.use('/socket.io', function (req, res) {
     if (address == undefined) {
         address = chlb.routeRequest(username)
     }
-    
+    logger.info(username+" is mapped to "+address.host+":"+address.port)
     proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
 
 })

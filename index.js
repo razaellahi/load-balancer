@@ -298,9 +298,9 @@ proxy.on('proxyRes', function (proxyRes, req, res) {
 app.use('/socket.io', function (req, res) {
     logger.info("Request Url " + req.url + " hostname: " + req.hostname)
     logger.info("Request coming from " + req.connection.remoteAddress)
-
+    console.log("Request body ===========> "+JSON.stringify(req.body))
     if (req.body != null) {
-        console.log(req.body)
+        
         var str = req.body
         var str2 = str.toString()
         if (str2.includes("agent")) {

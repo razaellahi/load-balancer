@@ -79,7 +79,7 @@ class CH_LB {
             this.target["host"] = s[0]
             this.target["port"] = s[1]
             logger.info(this.target["host"] + ":" + this.target["port"])
-            logger.info(request+" is mapped to "+this.target["host"]+":"+this.target["port"])
+            logger.info(request + " is mapped to " + this.target["host"] + ":" + this.target["port"])
             return this.target;
         }
         else {
@@ -87,7 +87,7 @@ class CH_LB {
                 for (let i = 0; i < this.tailRing.length; i++) {
                     ip = this.hashRing[this.tailRing[i]]
                     let loadonServr = this.load[ip]
-                    
+
                     if (loadonServr + 1 <= this.calculateLoad()) {
                         this.routeReq[request] = ip
                         this.load[ip] = this.load[ip] + 1; this.totalLoad++
@@ -95,7 +95,7 @@ class CH_LB {
                         this.target["host"] = s[0]
                         this.target["port"] = s[1]
                         logger.info(this.target["host"] + ":" + this.target["port"])
-                        logger.info(request+" is mapped to "+this.target["host"]+":"+this.target["port"])
+                        logger.info(request + " is mapped to " + this.target["host"] + ":" + this.target["port"])
                         return this.target;
                     }
                 }
@@ -111,7 +111,7 @@ class CH_LB {
                         this.target["host"] = s[0]
                         this.target["port"] = s[1]
                         logger.info(this.target["host"] + ":" + this.target["port"])
-                        logger.info(request+" is mapped to "+this.target["host"]+":"+this.target["port"])
+                        logger.info(request + " is mapped to " + this.target["host"] + ":" + this.target["port"])
                         return this.target;
                     }
                 }
@@ -219,7 +219,7 @@ setInterval(() => {
             };
             const req = http.request(options, (res) => {
                 console.log('Agent manager instance is reachable');
-                chlb.addServer(host[0]+":"+host[1])
+                chlb.addServer(host[0] + ":" + host[1])
                 let index = chlb.detachedInstances.indexOf(host[0] + ":" + host[1])
                 if (index != -1) {
                     chlb.detachedInstances.splice(index, 1);
@@ -237,14 +237,14 @@ setInterval(() => {
     }
     // logger.info("Down servers at the moment : " + chlb.detachedInstances)
     // logger.info("Up servers at the moment " + chlb.servers)
-    
+
 }, 2000)
 
 
 var proxy = httpProxy.createProxyServer({ ws: true });
 var server = https.createServer(credentials, app).listen(8082, () => {
     logger.info("Load balancer is listening at port 8082...");
-  })
+})
 app.use(express.json())
 app.use(express.urlencoded())
 app.use(express.text())
@@ -300,35 +300,32 @@ app.use('/socket.io', function (req, res) {
     logger.info("Request coming from " + req.connection.remoteAddress)
 
     if (req.body != null) {
-       console.log(req.body)
+        console.log(req.body)
         var str = req.body
         var str2 = str.toString()
         if (str2.includes("agent")) {
             var substr = str2.substring(2).replace(/[\\]/g, "").replace("\"{", "{").replace("}\"", "}")
             if (substr != null) {
-                logger.info(JSON.parse(substr))
+                //logger.info(JSON.parse(substr))
                 username = JSON.parse(substr).agent.username
             }
         }
     }
-    
-    if (address != undefined) {
-        try{
-            if(username != undefined){
-                address = chlb.routeRequest(username)
-                logger.info(username+" is mapped to "+address.host+":"+address.port)
-    proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
 
-            }
-        }
-        catch{
+    if (address == undefined) {
+        if (username == undefined) {
             logger.info("Username is undefined")
         }
+        else {
+            address = chlb.routeRequest(username)
+            proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
+        }
     }
-    else{
-        logger.info("Host is undefined")
+    else {
+        logger.info(username + " is mapped to " + address.host + ":" + address.port)
+        proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
     }
-    
+
 })
 
 server.on('upgrade', function (req, socket, head) {
@@ -341,6 +338,7 @@ proxy.on('error', function (err, req, res) {
     chlb.removeServer(address.host + ":" + address.port)
     logger.info("Available servers at the moment :" + chlb.servers)
     logger.info("Unvailable servers at the moment :" + chlb.detachedInstances)
+    console.log(addresses)
     res.writeHead(503, { 'Content-Type': 'text/plain' });
     res.end('Service Unavailable');
 })

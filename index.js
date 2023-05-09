@@ -298,9 +298,9 @@ proxy.on('proxyRes', function (proxyRes, req, res) {
 app.use('/socket.io', function (req, res) {
     logger.info("Request Url " + req.url + " hostname: " + req.hostname)
     logger.info("Request coming from " + req.connection.remoteAddress)
-    console.log("Request body ===========> "+JSON.stringify(req.body))
+    console.log("Request body ===========> " + req.body)
     if (req.body != null) {
-        
+
         var str = req.body
         var str2 = str.toString()
         if (str2.includes("agent")) {
@@ -322,7 +322,9 @@ app.use('/socket.io', function (req, res) {
         }
     }
     else {
-        logger.info(username + " is mapped to " + address.host + ":" + address.port)
+        if (username != undefined) {
+            logger.info(username + " is mapped to " + address.host + ":" + address.port)
+        }
         proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
     }
 

@@ -298,7 +298,9 @@ proxy.on('proxyRes', function (proxyRes, req, res) {
 app.use('/socket.io', function (req, res) {
     logger.info("Request Url " + req.url + " hostname: " + req.hostname)
     logger.info("Request coming from " + req.connection.remoteAddress)
-    console.log("Request body ===========> " + req.body)
+    const requestedUsername =  req.query.user_name.split("/")[0];
+    console.log("requestedUsername ===========> " ,requestedUsername);
+
     if (req.body != null) {
 
         var str = req.body

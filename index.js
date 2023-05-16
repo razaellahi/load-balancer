@@ -298,8 +298,20 @@ proxy.on('proxyRes', function (proxyRes, req, res) {
 app.use('/socket.io', function (req, res) {
     logger.info("Request Url " + req.url + " hostname: " + req.hostname)
     logger.info("Request coming from " + req.connection.remoteAddress)
-    console.log("requestedUsername ===========> ", req.query.username);
-    username = req.query.username
+     console.log("requestedUsername ===========> " ,req.query.username );
+
+    if (req.body != null) {
+
+        var str = req.body
+        var str2 = str.toString()
+        if (str2.includes("agent")) {
+            var substr = str2.substring(2).replace(/[\\]/g, "").replace("\"{", "{").replace("}\"", "}")
+            if (substr != null) {
+                //logger.info(JSON.parse(substr))
+                username = JSON.parse(substr).agent.username
+            }
+        }
+    }
 
     if (address == undefined) {
         if (username == undefined) {

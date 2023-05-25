@@ -249,7 +249,7 @@ app.use(express.json())
 app.use(express.urlencoded())
 app.use(express.text())
 var address
-var username
+var userId
 
 proxy.on('proxyReq', (proxyReq, req, res, options) => {
 
@@ -292,14 +292,31 @@ app.use('/agent-lb', function (req, res) {
 
 
 })
+
+app.use('/re', function (req, res) {
+    logger.info("Request Url: " + req.url + " hostname: " + req.hostname)
+    logger.info("Request coming from " + req.connection.remoteAddress)
+    if (req.url == "/agent/assign-task") {
+        userId = req.body.ccUser.keycloakUser.id
+        console.log(req.body.ccUser.keycloakUser.id)
+    }
+    else if (req.url == "/agent/revoke-task") {
+        userId = req.body.agentId
+        console.log(req.body.agentId)
+    }
+    address = chlb.routeRequest(userId)
+    proxy.web(req, res, { target: { host: address.host, port: address.port } })
+
+})
+
 proxy.on('proxyRes', function (proxyRes, req, res) {
     logger.info("Status code for URL " + req.url + " " + proxyRes.statusCode + " " + proxyRes.statusMessage);
 })
 app.use('/socket.io', function (req, res) {
     logger.info("Request Url " + req.url + " hostname: " + req.hostname)
     logger.info("Request coming from " + req.connection.remoteAddress)
-     console.log("requestedUsername ===========> " ,req.query.username );
-     username = req.query.username
+    console.log("requestedId ===========> ", req.query.agentId);
+    userId = req.query.agentId
     // if (req.body != null) {
 
     //     var str = req.body
@@ -314,17 +331,17 @@ app.use('/socket.io', function (req, res) {
     // }
 
     if (address == undefined) {
-        if (username == undefined) {
-            logger.info("Username is undefined")
+        if (userId == undefined) {
+            logger.info("Agent Id is undefined")
         }
         else {
-            address = chlb.routeRequest(username)
+            address = chlb.routeRequest(userId)
             proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
         }
     }
     else {
-        if (username != undefined) {
-            logger.info(username + " is mapped to " + address.host + ":" + address.port)
+        if (userId != undefined) {
+            logger.info(userId + " is mapped to " + address.host + ":" + address.port)
         }
         proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
     }

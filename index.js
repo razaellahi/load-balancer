@@ -78,8 +78,10 @@ class CH_LB {
             let s = ip.split(":")
             this.target["host"] = s[0]
             this.target["port"] = s[1]
+            logger.info("Mapping is already present")
             logger.info(this.target["host"] + ":" + this.target["port"])
             logger.info(request + " is mapped to " + this.target["host"] + ":" + this.target["port"])
+            console.log(this.routeReq)
             return this.target;
         }
         else {
@@ -237,6 +239,8 @@ setInterval(() => {
     }
     // logger.info("Down servers at the moment : " + chlb.detachedInstances)
     // logger.info("Up servers at the moment " + chlb.servers)
+    console.log(chlb.routeReq)
+    console.log(chlb.load)
 
 }, 2000)
 
@@ -298,11 +302,11 @@ app.use('/re', function (req, res) {
     logger.info("Request coming from " + req.connection.remoteAddress)
     if (req.url == "/agent/assign-task") {
         userId = req.body.ccUser.keycloakUser.id
-        console.log(req.body.ccUser.keycloakUser.id)
+        console.log(req.body.ccUser)
     }
     else if (req.url == "/agent/revoke-task") {
         userId = req.body.agentId
-        console.log(req.body.agentId)
+        console.log(req.body)
     }
     address = chlb.routeRequest(userId)
     proxy.web(req, res, { target: { host: address.host, port: address.port } })
@@ -330,20 +334,10 @@ app.use('/socket.io', function (req, res) {
     //     }
     // }
 
-    if (address == undefined) {
-        if (userId == undefined) {
-            logger.info("Agent Id is undefined")
-        }
-        else {
-            address = chlb.routeRequest(userId)
-            proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
-        }
-    }
-    else {
-        if (userId != undefined) {
-            logger.info(userId + " is mapped to " + address.host + ":" + address.port)
-        }
+    if (userId != undefined) {
+        address = chlb.routeRequest(userId)
         proxy.web(req, res, { target: { host: address.host, port: address.port, path: '/socket.io' } })
+        logger.info(userId + " is mapped to " + address.host + ":" + address.port)
     }
 
 })

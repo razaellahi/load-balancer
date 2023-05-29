@@ -78,10 +78,8 @@ class CH_LB {
             let s = ip.split(":")
             this.target["host"] = s[0]
             this.target["port"] = s[1]
-            logger.info("Mapping is already present")
             logger.info(this.target["host"] + ":" + this.target["port"])
             logger.info(request + " is mapped to " + this.target["host"] + ":" + this.target["port"])
-            console.log(this.routeReq)
             return this.target;
         }
         else {

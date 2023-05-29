@@ -4,7 +4,6 @@ const router = express.Router({})
 router.get('/',async (_req,res,_next)=>{
     const healthcheck ={
         uptime : process.uptime(),
-        responseTime : process.hrtime(),
         message : "OK",
         timestamp : Date.now()
     }

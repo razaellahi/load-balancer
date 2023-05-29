@@ -239,8 +239,6 @@ setInterval(() => {
     }
     // logger.info("Down servers at the moment : " + chlb.detachedInstances)
     // logger.info("Up servers at the moment " + chlb.servers)
-    console.log(chlb.routeReq)
-    console.log(chlb.load)
 
 }, 2000)
 
@@ -302,11 +300,11 @@ app.use('/re', function (req, res) {
     logger.info("Request coming from " + req.connection.remoteAddress)
     if (req.url == "/agent/assign-task") {
         userId = req.body.ccUser.keycloakUser.id
-        console.log(req.body.ccUser)
+        // console.log(req.body.ccUser)
     }
     else if (req.url == "/agent/revoke-task") {
         userId = req.body.agentId
-        console.log(req.body)
+        // console.log(req.body)
     }
     address = chlb.routeRequest(userId)
     proxy.web(req, res, { target: { host: address.host, port: address.port } })
@@ -319,7 +317,7 @@ proxy.on('proxyRes', function (proxyRes, req, res) {
 app.use('/socket.io', function (req, res) {
     logger.info("Request Url " + req.url + " hostname: " + req.hostname)
     logger.info("Request coming from " + req.connection.remoteAddress)
-    console.log("requestedId ===========> ", req.query.agentId);
+    logger.info("requestedId ===========> ", req.query.agentId);
     userId = req.query.agentId
     // if (req.body != null) {
 
@@ -356,6 +354,8 @@ proxy.on('error', function (err, req, res) {
     res.writeHead(503, { 'Content-Type': 'text/plain' });
     res.end('Service Unavailable');
 })
+
+app.use('/healthcheck', require('./route/healthcheck'));
 
 
 process.on('SIGTERM', () => {
